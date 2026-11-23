@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ショート動画制作ミニツール集</title>
+<meta name="description" content="VOICEVOX・ショート動画制作のための無料ミニツール集。台本の読み間違いチェック、WAV一括結合と実測SRT生成、ショート動画のUI被りチェック。すべてブラウザ内処理で外部送信なし。">
+<style>
+  :root { --bg:#f6f8fa; --surface:#ffffff; --border:#d0d7de; --text:#1f2328; --muted:#59636e; --primary:#0969da; --ok-bg:#dafbe1; --ok-text:#1a7f37; --radius:8px; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+  header { max-width: 880px; margin: 0 auto; padding: 40px 20px 8px; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  .lead { color: var(--muted); line-height: 1.7; margin: 0 0 6px; }
+  .badge { display:inline-block; background:var(--ok-bg); color:var(--ok-text); border-radius:999px; padding:2px 12px; font-size:13px; font-weight:600; }
+  main { max-width: 880px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+  .tool { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .tool h2 { font-size: 19px; margin: 0 0 6px; }
+  .tool h2 a { color: var(--primary); text-decoration: none; }
+  .tool h2 a:hover { text-decoration: underline; }
+  .tool p { color: var(--muted); line-height: 1.7; margin: 0; }
+  footer { max-width: 880px; margin: 0 auto; padding: 8px 20px 40px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ショート動画制作ミニツール集</h1>
+  <p class="lead">VOICEVOXとショート動画の制作を少し楽にする、無料の小さなツールたちです。</p>
+  <span class="badge">完全ローカル処理・外部送信なし</span>
+</header>
+<main>
+  <section class="tool">
+    <h2><a href="./yomichigai-checker.html">よみちがいチェッカー（VOICEVOX・字幕変換ツール）</a></h2>
+    <p>台本を貼ると、音声合成が読み間違えやすい語をチェックし、VOICEVOX向けテキスト・SRT字幕・YMM4用CSVに変換します。字幕末尾の句読点や長すぎる行の警告つき。</p>
+  </section>
+  <section class="tool">
+    <h2><a href="./wav-merger.html">WAV一括結合＆実測SRT生成ツール</a></h2>
+    <p>VOICEVOXから書き出した連番WAVをまとめてドロップすると、前後の無音をカットして1本のWAVに結合。実測の長さからズレないSRT字幕も同時に生成します。</p>
+  </section>
+  <section class="tool">
+    <h2><a href="./safezone-checker.html">ショート動画UI被り（セーフゾーン）チェッカー</a></h2>
+    <p>完成した縦長動画や画像に、YouTube Shorts・TikTok・Instagram ReelsのUIガイドを重ねて表示。字幕や立ち絵がボタンやタイトルに被っていないかを投稿前に確認できます。</p>
+  </section>
+</main>
+<footer>
+  <p>どのツールも、入力した台本・音声・動画をサーバーへ送信しません。すべての処理はお使いのブラウザの中で完結します。</p>
+</footer>
+</body>
+</html>

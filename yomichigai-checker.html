@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>よみちがいチェッカー（VOICEVOX・字幕変換ツール）</title>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #59636e;
+      --primary: #0969da;
+      --primary-hover: #0550ae;
+      --danger: #cf222e;
+      --warn-bg: #fff8c5;
+      --warn-border: #d4a72c;
+      --warn-text: #7d4e00;
+      --info-bg: #ddf4ff;
+      --info-border: #54aeff;
+      --info-text: #0969da;
+      --ok-bg: #dafbe1;
+      --ok-text: #1a7f37;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ヘッダー */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .privacy-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--ok-bg);
+      color: var(--ok-text);
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover { background: #f3f4f6; }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    .btn-danger {
+      color: var(--danger);
+      border-color: #f0b4b8;
+    }
+
+    .btn-danger:hover {
+      background: #ffebe9;
+    }
+
+    /* 設定パネル */
+    .settings-panel {
+      background: #eef2f6;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: none;
+    }
+
+    .settings-panel.open { display: block; }
+
+    .settings-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+    }
+
+    .setting-item label {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .setting-item input {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 140px;
+      background: var(--surface);
+    }
+
+    /* メイン2ペイン */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      min-height: calc(100vh - 70px);
+    }
+
+    .pane {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 520px;
+    }
+
+    .pane-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pane-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .stats {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .options-bar {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.82rem;
+      background: #fff;
+    }
+
+    .options-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    textarea#scriptInput {
+      flex: 1;
+      width: 100%;
+      border: none;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+    }
+
+    /* タブ */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--surface);
+    }
+
+    .badge-count {
+      font-size: 0.72rem;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .badge-count.has-issues {
+      background: var(--warn-bg);
+      color: var(--warn-text);
+      border: 1px solid var(--warn-border);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-content.active { display: flex; }
+
+    .action-bar {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .output-pre {
+      flex: 1;
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #fcfcfd;
+    }
+
+    .issues-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .empty-state {
+      padding: 24px;
+      text-align: center;
+      color: var(--ok-text);
+      background: var(--ok-bg);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .issue-card {
+      padding: 10px 12px;
+      border-radius: 6px;
+      border-left: 4px solid var(--warn-border);
+      background: var(--warn-bg);
+      font-size: 0.85rem;
+    }
+
+    .issue-card.info {
+      border-left-color: var(--info-border);
+      background: var(--info-bg);
+    }
+
+    .issue-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+      font-weight: 700;
+    }
+
+    .line-tag {
+      font-size: 0.75rem;
+      background: rgba(0, 0, 0, 0.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .issue-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* 辞書管理モーダル */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 780px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fafbfc;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dict-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1.5fr auto;
+      gap: 8px;
+      align-items: end;
+      background: #f6f8fa;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .dict-form .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.78rem;
+    }
+
+    .dict-form label { font-weight: 600; color: var(--muted); }
+
+    .dict-form input {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .dict-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dict-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    .dict-table th, .dict-table td {
+      border-bottom: 1px solid var(--border);
+      padding: 7px 8px;
+      text-align: left;
+    }
+
+    .dict-table th {
+      background: #fafbfc;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .dict-row-disabled {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
+    .tag-custom {
+      font-size: 0.7rem;
+      background: var(--info-bg);
+      color: var(--info-text);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .tag-default {
+      font-size: 0.7rem;
+      background: #eaeef2;
+      color: var(--muted);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1f2328;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 200;
+    }
+
+    .toast.show { opacity: 1; }
+
+    @media (max-width: 840px) {
+      header { padding: 10px 14px; }
+      main {
+        grid-template-columns: 1fr;
+        padding: 12px;
+        min-height: auto;
+      }
+      .pane { min-height: 360px; }
+      textarea#scriptInput { min-height: 240px; }
+      .setting-item input { width: 100%; }
+      .settings-grid { display: grid; grid-template-columns: 1fr 1fr; }
+      .dict-form { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="title-group">
+    <h1>よみちがいチェッカー（VOICEVOX・字幕変換ツール）</h1>
+    <span class="privacy-badge">完全ローカル処理・外部送信なし</span>
+  </div>
+  <div class="header-actions">
+    <button type="button" class="btn" id="openDictModalBtn">📖 辞書管理</button>
+    <button type="button" class="btn" id="toggleSettingsBtn">⚙ 設定</button>
+  </div>
+</header>
+
+<section class="settings-panel" id="settingsPanel">
+  <div class="settings-grid">
+    <div class="setting-item">
+      <label for="maxLineLength">1行の最大文字数</label>
+      <input type="number" id="maxLineLength" min="5" max="100" value="20" />
+    </div>
+    <div class="setting-item">
+      <label for="charsPerSecond">読み上げ速度（文字/秒）</label>
+      <input type="number" id="charsPerSecond" min="1" max="20" step="0.5" value="6" />
+    </div>
+    <div class="setting-item">
+      <label for="defaultSpeaker">デフォルト話者名（YMM4用）</label>
+      <input type="text" id="defaultSpeaker" value="きりたん" />
+    </div>
+  </div>
+</section>
+
+<main>
+  <!-- 左ペイン：入力 -->
+  <section class="pane">
+    <div class="pane-header">
+      <span class="pane-title">台本入力</span>
+      <span class="stats" id="statsDisplay">0文字 / 0行 / 推定 0.0秒</span>
+    </div>
+    <div class="options-bar">
+      <label><input type="checkbox" id="optSplitSentence" /> 句点（。）で自動分割</label>
+      <label><input type="checkbox" id="optStripPunct" checked /> 末尾の「、。」を除去</label>
+      <label><input type="checkbox" id="optStripSpeaker" checked /> VOICEVOX出力で話者名を外す</label>
+    </div>
+    <textarea id="scriptInput" placeholder="ここに台本を貼り付けてください。&#10;例：&#10;きりたん：他の動画と比べても、何でも分かる解説です。&#10;きりたん：怒りを抑えて作業の最中に確認しましょう。"></textarea>
+  </section>
+
+  <!-- 右ペイン：出力＆チェック -->
+  <section class="pane">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="check">
+        チェック結果 <span class="badge-count" id="issueCountBadge">0</span>
+      </button>
+      <button type="button" class="tab-btn" data-tab="voicevox">VOICEVOX用</button>
+      <button type="button" class="tab-btn" data-tab="srt">SRT字幕</button>
+      <button type="button" class="tab-btn" data-tab="ymm4">YMM4用CSV</button>
+    </div>
+
+    <!-- タブ1: チェック結果 -->
+    <div class="tab-content active" id="tab-check">
+      <div class="issues-list" id="issuesList"></div>
+    </div>
+
+    <!-- タブ2: VOICEVOX用 -->
+    <div class="tab-content" id="tab-voicevox">
+      <div class="action-bar">
+        <span>VOICEVOXのテキスト読み込み用</span>
+        <button type="button" class="btn btn-primary" id="copyVoicevoxBtn">コピー</button>
+      </div>
+      <pre class="output-pre" id="voicevoxOutput"></pre>
+    </div>
+
+    <!-- タブ3: SRT字幕 -->
+    <div class="tab-content" id="tab-srt">
+      <div class="action-bar">
+        <span>仮タイムスタンプ付きSRT字幕</span>
+        <div>
+          <button type="button" class="btn" id="copySrtBtn">コピー</button>
+          <button type="button" class="btn btn-primary" id="downloadSrtBtn">.srt ダウンロード</button>
+        </div>
+      </div>
+      <pre class="output-pre" id="srtOutput"></pre>
+    </div>
+
+    <!-- タブ4: YMM4用CSV -->
+    <div class="tab-content" id="tab-ymm4">
+      <div class="action-bar">
+        <span>YMM4台本読み込み用（BOM付きUTF-8）</span>
+        <div>
+          <button type="button" class="btn" id="copyYmm4Btn">コピー</button>
+          <button type="button" class="btn btn-primary" id="downloadYmm4Btn">.csv ダウンロード</button>
+        </div>
+      </div>
+      <pre class="output-pre" id="ymm4Output"></pre>
+    </div>
+  </section>
+</main>
+
+<!-- 辞書管理モーダル -->
+<div class="modal-backdrop" id="dictModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dictModalTitle">
+    <div class="modal-header">
+      <h2 id="dictModalTitle">辞書管理（カスタム辞書追加・無効化・JSON入出力）</h2>
+      <button type="button" class="btn" id="closeDictModalBtn">閉じる</button>
+    </div>
+    <div class="modal-body">
+      <form class="dict-form" id="addDictForm">
+        <div class="field">
+          <label for="newSurface">表記 *</label>
+          <input type="text" id="newSurface" placeholder="例: 他の" required />
+        </div>
+        <div class="field">
+          <label for="newMisread">想定される誤読 *</label>
+          <input type="text" id="newMisread" placeholder="例: たの" required />
+        </div>
+        <div class="field">
+          <label for="newCorrect">正しい読み *</label>
+          <input type="text" id="newCorrect" placeholder="例: ほかの" required />
+        </div>
+        <div class="field">
+          <label for="newNote">注意メモ</label>
+          <input type="text" id="newNote" placeholder="例: ひらがな推奨" />
+        </div>
+        <button type="submit" class="btn btn-primary">追加</button>
+      </form>
+
+      <div class="dict-toolbar">
+        <span class="stats" id="dictStats">有効: 0語 / 全 0語</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn" id="exportDictBtn">カスタム辞書をJSON出力</button>
+          <button type="button" class="btn" id="importDictBtn">JSONインポート</button>
+          <input type="file" id="importDictFile" accept=".json,application/json" hidden />
+        </div>
+      </div>
+
+      <table class="dict-table">
+        <thead>
+          <tr>
+            <th style="width:46px;">有効</th>
+            <th style="width:72px;">種別</th>
+            <th>表記</th>
+            <th>誤読 → 正しい読み</th>
+            <th>注意メモ</th>
+            <th style="width:60px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="dictTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">コピーしました</div>
+
+<script>
+  // ==========================================
+  // 初期辞書データ（43語）
+  // ==========================================
+  const INITIAL_DICTIONARY = [
+    { "表記": "今日", "想定される誤読": "こんにち", "正しい読み": "きょう / こんにち", "注意メモ": "日常の「きょう」はひらがな推奨" },
+    { "表記": "明日", "想定される誤読": "みょうにち / あす", "正しい読み": "あした / あす", "注意メモ": "口語なら「あした」とひらがな化すると安定" },
+    { "表記": "昨日", "想定される誤読": "さくじつ", "正しい読み": "きのう / さくじつ", "注意メモ": "カジュアルな解説では「きのう」推奨" },
+    { "表記": "人気", "想定される誤読": "ひとけ", "正しい読み": "にんき / ひとけ", "注意メモ": "「人気がない」は特に誤読されやすい" },
+    { "表記": "風", "想定される誤読": "かぜ", "正しい読み": "ふう / かぜ", "注意メモ": "「〜風（ふう）」はカタカナやひらがなで指定推奨" },
+    { "表記": "一時", "想定される誤読": "いちじ", "正しい読み": "いっとき / いちじ", "注意メモ": "時刻の「いちじ」と期間の「いっとき」で誤読しやすい" },
+    { "表記": "一生", "想定される誤読": "いちしょう", "正しい読み": "いっしょう", "注意メモ": "まれに促音が抜けるため注意" },
+    { "表記": "上手", "想定される誤読": "うわて / かみて", "正しい読み": "じょうず / うわて", "注意メモ": "「上手に」は「じょうずに」と確認推奨" },
+    { "表記": "下手", "想定される誤読": "したて / しもて", "正しい読み": "へた / したて", "注意メモ": "「下手な」は「へたな」と確認推奨" },
+    { "表記": "一段落", "想定される誤読": "ひとだんらく", "正しい読み": "いちだんらく", "注意メモ": "慣用読みと本来の読みの揺れに注意" },
+    { "表記": "重複", "想定される誤読": "じゅうふく", "正しい読み": "ちょうふく / じゅうふく", "注意メモ": "「ちょうふく」に統一したい場合は要チェック" },
+    { "表記": "代替", "想定される誤読": "だいがえ", "正しい読み": "だいたい", "注意メモ": "「だいがえ」と誤読・誤用されやすい" },
+    { "表記": "依存", "想定される誤読": "いぞん", "正しい読み": "いそん / いぞん", "注意メモ": "チャンネル内で読みを統一する語" },
+    { "表記": "相殺", "想定される誤読": "そうさつ", "正しい読み": "そうさい", "注意メモ": "「そうさつ」と読まれるケースが多い" },
+    { "表記": "貼付", "想定される誤読": "はりつけ", "正しい読み": "ちょうふ / てんぷ", "注意メモ": "「ちょうふ」が本来だが読み間違いやすい" },
+    { "表記": "月極", "想定される誤読": "げっきょく", "正しい読み": "つきぎめ", "注意メモ": "音声合成がほぼ確実に「げっきょく」と読む" },
+    { "表記": "早急", "想定される誤読": "そうきゅう", "正しい読み": "さっきゅう / そうきゅう", "注意メモ": "意図した読みになっているか要確認" },
+    { "表記": "進捗", "想定される誤読": "しんぽ", "正しい読み": "しんちょく", "注意メモ": "稀に「しんぽ」や音読み崩れが起きる" },
+    { "表記": "言質", "想定される誤読": "げんしつ", "正しい読み": "げんち", "注意メモ": "「げんしつ」と誤読されやすい" },
+    { "表記": "雰囲気", "想定される誤読": "ふいんき", "正しい読み": "ふんいき", "注意メモ": "アクセント含め不自然になりやすい語" },
+    { "表記": "辛い", "想定される誤読": "からい", "正しい読み": "つらい / からい", "注意メモ": "「つらい」の意味ならひらがな化必須" },
+    { "表記": "開く", "想定される誤読": "ひらく", "正しい読み": "あく / ひらく", "注意メモ": "文脈で「あく」「ひらく」が逆転しやすい" },
+    { "表記": "空く", "想定される誤読": "すく", "正しい読み": "あく / すく", "注意メモ": "「席が空く（あく）」「お腹が空く（すく）」の誤読注意" },
+    { "表記": "行う", "想定される誤読": "いく", "正しい読み": "おこなう", "注意メモ": "送り仮名が「行なう」でないと誤読するケースあり" },
+    { "表記": "言う", "想定される誤読": "いう", "正しい読み": "ゆう / いう", "注意メモ": "口語で「ゆう」と読ませたい場合はひらがな推奨" },
+    { "表記": "行く", "想定される誤読": "いく", "正しい読み": "いく / ゆく", "注意メモ": "「行く先（ゆくさき）」などの複合語に注意" },
+    { "表記": "日本", "想定される誤読": "にほん", "正しい読み": "にほん / にっぽん", "注意メモ": "「にっぽん」と読ませたい箇所はカタカナ指定推奨" },
+    { "表記": "十分", "想定される誤読": "じっぷん", "正しい読み": "じゅうぶん / じゅっぷん", "注意メモ": "時間（10分）と程度（十分）で誤読しやすい" },
+    { "表記": "何時", "想定される誤読": "なんじ", "正しい読み": "いつ / なんじ", "注意メモ": "「いつ」の意味ならひらがな化必須" },
+    { "表記": "何人", "想定される誤読": "なんにん", "正しい読み": "なんびと / なんにん", "注意メモ": "「なんびと」は読み指定が必要" },
+    { "表記": "市場", "想定される誤読": "いちば", "正しい読み": "しじょう / いちば", "注意メモ": "ビジネス・経済の「しじょう」が「いちば」になりやすい" },
+    { "表記": "工夫", "想定される誤読": "こうふ", "正しい読み": "くふう", "注意メモ": "文脈により「こうふ」と誤読されることがある" },
+    { "表記": "生物", "想定される誤読": "なまもの", "正しい読み": "せいぶつ / なまもの", "注意メモ": "「せいぶつ」と「なまもの」の取り違えに注意" },
+    { "表記": "文書", "想定される誤読": "もんじょ", "正しい読み": "ぶんしょ / もんじょ", "注意メモ": "古文書以外は「ぶんしょ」になっているか確認" },
+    { "表記": "大抵", "想定される誤読": "だいてい", "正しい読み": "たいてい", "注意メモ": "濁音化しやすい語" },
+    { "表記": "仮に", "想定される誤読": "かりに", "正しい読み": "かりに", "注意メモ": "「仮」単体だと「け」と読まれることがあるため注意" },
+    { "表記": "最中", "想定される誤読": "もなか", "正しい読み": "さいちゅう / さなか", "注意メモ": "「〜の最中」が和菓子の「もなか」になる定番誤読" },
+    { "表記": "他人", "想定される誤読": "たにん", "正しい読み": "たにん / ひと", "注意メモ": "「ひと」と読ませる場合はひらがな化" },
+    { "表記": "一段と", "想定される誤読": "ひとだんと", "正しい読み": "いちだんと", "注意メモ": "「いちだんと」が崩れることがある" },
+    { "表記": "生粋", "想定される誤読": "なますい", "正しい読み": "きっすい", "注意メモ": "「きっすい」と読めないエンジンがある" },
+    { "表記": "他の", "想定される誤読": "たの", "正しい読み": "ほかの", "注意メモ": "「たの」と誤読されやすい。「ほかの」とひらがな推奨" },
+    { "表記": "何でも", "想定される誤読": "なにでも", "正しい読み": "なんでも", "注意メモ": "「なにでも」と読まれやすい。「なんでも」推奨" },
+    { "表記": "怒り", "想定される誤読": "おこり", "正しい読み": "いかり", "注意メモ": "「おこり」と誤読されやすい" }
+  ];
+
+  // ==========================================
+  // 辞書ストレージ管理（localStorage）
+  // ==========================================
+  const STORAGE_KEYS = {
+    CUSTOM_DICT: 'yomichigai_custom_dict_v1',
+    DISABLED_SURFACES: 'yomichigai_disabled_surfaces_v1',
+  };
+
+  function loadCustomDict() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_DICT);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveCustomDict(entries) {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_DICT, JSON.stringify(entries));
+  }
+
+  function loadDisabledSet() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.DISABLED_SURFACES);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveDisabledSet(set) {
+    localStorage.setItem(STORAGE_KEYS.DISABLED_SURFACES, JSON.stringify([...set]));
+  }
+
+  let customDict = loadCustomDict();
+  let disabledSurfaces = loadDisabledSet();
+
+  function getActiveDictionary() {
+    const all = [...customDict, ...INITIAL_DICTIONARY];
+    return all.filter((entry) => !disabledSurfaces.has(entry['表記']));
+  }
+
+  // ==========================================
+  // コアロジック
+  // ==========================================
+  function splitIntoLines(text, options = {}) {
+    const { splitBySentence = false, removeEmptyLines = true } = options;
+    if (!text) return [];
+    let normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    if (splitBySentence) {
+      normalized = normalized.replace(/。(?!\n|$)/g, '。\n');
+    }
+    let lines = normalized.split('\n').map((line) => line.trim());
+    if (removeEmptyLines) {
+      lines = lines.filter((line) => line.length > 0);
+    }
+    return lines;
+  }
+
+  function removeTrailingPunctuation(line) {
+    return line.replace(/[、。]+$/u, '');
+  }
+
+  function parseSpeakerLine(line, defaultSpeaker = 'デフォルト') {
+    const match = line.match(/^([^：:\s][^：:]{0,20})[：:]\s*(.+)$/);
+    if (match) {
+      return { speaker: match[1].trim(), body: match[2].trim() };
+    }
+    return { speaker: defaultSpeaker, body: line };
+  }
+
+  function formatForVoicevox(text, options = {}) {
+    const {
+      splitBySentence = false,
+      stripTrailingPunctuation = false,
+      stripSpeaker = true,
+    } = options;
+    const lines = splitIntoLines(text, { splitBySentence, removeEmptyLines: true });
+    return lines
+      .map((line) => {
+        let target = stripSpeaker ? parseSpeakerLine(line).body : line;
+        if (stripTrailingPunctuation) {
+          target = removeTrailingPunctuation(target);
+        }
+        return target;
+      })
+      .join('\n');
+  }
+
+  function formatSrtTime(totalSeconds) {
+    const ms = Math.round((totalSeconds % 1) * 1000);
+    const totalSecInt = Math.floor(totalSeconds);
+    const s = totalSecInt % 60;
+    const m = Math.floor(totalSecInt / 60) % 60;
+    const h = Math.floor(totalSecInt / 3600);
+    const pad = (num, size = 2) => String(num).padStart(size, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
+  }
+
+  function generateSrt(text, options = {}) {
+    const {
+      splitBySentence = false,
+      stripTrailingPunctuation = true,
+      charsPerSecond = 6,
+      gapSeconds = 0.3,
+    } = options;
+    const lines = splitIntoLines(text, { splitBySentence, removeEmptyLines: true });
+    let currentTime = 0;
+    const blocks = [];
+
+    lines.forEach((rawLine, index) => {
+      const { body } = parseSpeakerLine(rawLine);
+      const subtitleText = stripTrailingPunctuation
+        ? removeTrailingPunctuation(body)
+        : body;
+      const duration = Math.max(0.8, subtitleText.length / charsPerSecond);
+      const startTime = currentTime;
+      const endTime = startTime + duration;
+      blocks.push(
+        `${index + 1}\n${formatSrtTime(startTime)} --> ${formatSrtTime(endTime)}\n${subtitleText}`
+      );
+      currentTime = endTime + gapSeconds;
+    });
+
+    return blocks.join('\n\n') + (blocks.length > 0 ? '\n' : '');
+  }
+
+  function escapeCsvField(value) {
+    if (/[",\r\n]/.test(value)) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  }
+
+  function generateYmm4Csv(text, options = {}) {
+    const {
+      defaultSpeaker = 'きりたん',
+      splitBySentence = false,
+      stripTrailingPunctuation = true,
+      includeBom = true,
+    } = options;
+    const lines = splitIntoLines(text, { splitBySentence, removeEmptyLines: true });
+    const rows = lines.map((rawLine) => {
+      const { speaker, body } = parseSpeakerLine(rawLine, defaultSpeaker);
+      const finalBody = stripTrailingPunctuation
+        ? removeTrailingPunctuation(body)
+        : body;
+      return `${escapeCsvField(speaker)},${escapeCsvField(finalBody)}`;
+    });
+    const csvBody = rows.join('\r\n') + (rows.length > 0 ? '\r\n' : '');
+    return includeBom ? '\uFEFF' + csvBody : csvBody;
+  }
+
+  function checkScript(text, dictionaryEntries = [], rules = {}) {
+    const { checkTrailingPunctuation = true, maxLineLength = 20 } = rules;
+    const issues = [];
+    if (!text) return issues;
+    const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+    rawLines.forEach((rawLine, idx) => {
+      const lineNumber = idx + 1;
+      const trimmed = rawLine.trim();
+      if (!trimmed) return;
+      const { body } = parseSpeakerLine(trimmed);
+
+      dictionaryEntries.forEach((entry) => {
+        const surface = entry['表記'];
+        if (!surface) return;
+        let pos = body.indexOf(surface);
+        while (pos !== -1) {
+          issues.push({
+            lineNumber,
+            type: 'misread',
+            severity: 'warning',
+            matchedText: surface,
+            message: `「${surface}」→ 誤読注意（${entry['想定される誤読']}）／ 正：${entry['正しい読み']}`,
+            detail: { note: entry['注意メモ'] },
+          });
+          pos = body.indexOf(surface, pos + surface.length);
+        }
+      });
+
+      if (checkTrailingPunctuation && /[、。]$/u.test(body)) {
+        const matched = body.match(/[、。]+$/u)[0];
+        issues.push({
+          lineNumber,
+          type: 'trailing_punctuation',
+          severity: 'info',
+          matchedText: matched,
+          message: `行末に句読点「${matched}」が付いています（字幕では除去推奨）`,
+        });
+      }
+
+      const charCount = Array.from(body).length;
+      if (maxLineLength > 0 && charCount > maxLineLength) {
+        issues.push({
+          lineNumber,
+          type: 'line_too_long',
+          severity: 'warning',
+          message: `1行が長すぎます（${charCount}文字 / 上限${maxLineLength}文字）`,
+        });
+      }
+    });
+
+    return issues;
+  }
+
+  // ==========================================
+  // UI制御
+  // ==========================================
+  const els = {
+    scriptInput: document.getElementById('scriptInput'),
+    statsDisplay: document.getElementById('statsDisplay'),
+    optSplitSentence: document.getElementById('optSplitSentence'),
+    optStripPunct: document.getElementById('optStripPunct'),
+    optStripSpeaker: document.getElementById('optStripSpeaker'),
+    maxLineLength: document.getElementById('maxLineLength'),
+    charsPerSecond: document.getElementById('charsPerSecond'),
+    defaultSpeaker: document.getElementById('defaultSpeaker'),
+    toggleSettingsBtn: document.getElementById('toggleSettingsBtn'),
+    settingsPanel: document.getElementById('settingsPanel'),
+    issuesList: document.getElementById('issuesList'),
+    issueCountBadge: document.getElementById('issueCountBadge'),
+    voicevoxOutput: document.getElementById('voicevoxOutput'),
+    srtOutput: document.getElementById('srtOutput'),
+    ymm4Output: document.getElementById('ymm4Output'),
+    toast: document.getElementById('toast'),
+    // 辞書モーダル
+    dictModal: document.getElementById('dictModal'),
+    openDictModalBtn: document.getElementById('openDictModalBtn'),
+    closeDictModalBtn: document.getElementById('closeDictModalBtn'),
+    addDictForm: document.getElementById('addDictForm'),
+    newSurface: document.getElementById('newSurface'),
+    newMisread: document.getElementById('newMisread'),
+    newCorrect: document.getElementById('newCorrect'),
+    newNote: document.getElementById('newNote'),
+    dictTableBody: document.getElementById('dictTableBody'),
+    dictStats: document.getElementById('dictStats'),
+    exportDictBtn: document.getElementById('exportDictBtn'),
+    importDictBtn: document.getElementById('importDictBtn'),
+    importDictFile: document.getElementById('importDictFile'),
+  };
+
+  function showToast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    setTimeout(() => els.toast.classList.remove('show'), 1800);
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
+  }
+
+  function updateAll() {
+    const text = els.scriptInput.value;
+    const splitBySentence = els.optSplitSentence.checked;
+    const stripTrailingPunctuation = els.optStripPunct.checked;
+    const stripSpeaker = els.optStripSpeaker.checked;
+    const maxLineLength = Math.max(1, Number(els.maxLineLength.value) || 20);
+    const charsPerSecond = Math.max(0.5, Number(els.charsPerSecond.value) || 6);
+    const defaultSpeaker = els.defaultSpeaker.value.trim() || 'きりたん';
+
+    const lines = splitIntoLines(text, { splitBySentence, removeEmptyLines: true });
+    const totalChars = lines.reduce((sum, l) => sum + Array.from(parseSpeakerLine(l).body).length, 0);
+    const estSeconds = lines.length > 0 ? (totalChars / charsPerSecond + (lines.length - 1) * 0.3) : 0;
+    els.statsDisplay.textContent = `${totalChars}文字 / ${lines.length}行 / 推定 ${estSeconds.toFixed(1)}秒`;
+
+    const activeDict = getActiveDictionary();
+    const issues = checkScript(text, activeDict, {
+      checkTrailingPunctuation: true,
+      maxLineLength,
+    });
+    els.issueCountBadge.textContent = issues.length;
+    els.issueCountBadge.classList.toggle('has-issues', issues.length > 0);
+
+    if (!text.trim()) {
+      els.issuesList.innerHTML = '<div style="color:#59636e;padding:16px;text-align:center;">左側に台本を入力すると、リアルタイムでチェック結果が表示されます。</div>';
+    } else if (issues.length === 0) {
+      els.issuesList.innerHTML = '<div class="empty-state">問題は見つかりませんでした</div>';
+    } else {
+      els.issuesList.innerHTML = issues.map((issue) => `
+        <div class="issue-card ${issue.severity === 'info' ? 'info' : ''}">
+          <div class="issue-header">
+            <span class="line-tag">${issue.lineNumber}行目</span>
+            <span>${escapeHtml(issue.message)}</span>
+          </div>
+          ${issue.detail?.note ? `<div class="issue-note">メモ：${escapeHtml(issue.detail.note)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    els.voicevoxOutput.textContent = formatForVoicevox(text, {
+      splitBySentence,
+      stripTrailingPunctuation,
+      stripSpeaker,
+    });
+
+    els.srtOutput.textContent = generateSrt(text, {
+      splitBySentence,
+      stripTrailingPunctuation,
+      charsPerSecond,
+    });
+
+    els.ymm4Output.textContent = generateYmm4Csv(text, {
+      defaultSpeaker,
+      splitBySentence,
+      stripTrailingPunctuation,
+      includeBom: false,
+    });
+  }
+
+  // ==========================================
+  // 辞書管理モーダル制御
+  // ==========================================
+  function renderDictTable() {
+    const combined = [
+      ...customDict.map((e, idx) => ({ ...e, _isCustom: true, _customIdx: idx })),
+      ...INITIAL_DICTIONARY.map((e) => ({ ...e, _isCustom: false })),
+    ];
+    const activeCount = combined.filter((e) => !disabledSurfaces.has(e['表記'])).length;
+    els.dictStats.textContent = `有効: ${activeCount}語 / 全 ${combined.length}語（カスタム ${customDict.length}語）`;
+
+    els.dictTableBody.innerHTML = combined.map((entry) => {
+      const surface = entry['表記'];
+      const isDisabled = disabledSurfaces.has(surface);
+      return `
+        <tr class="${isDisabled ? 'dict-row-disabled' : ''}">
+          <td>
+            <input type="checkbox" class="dict-toggle" data-surface="${escapeHtml(surface)}" ${isDisabled ? '' : 'checked'} />
+          </td>
+          <td>${entry._isCustom ? '<span class="tag-custom">カスタム</span>' : '<span class="tag-default">初期</span>'}</td>
+          <td><strong>${escapeHtml(surface)}</strong></td>
+          <td>${escapeHtml(entry['想定される誤読'])} → ${escapeHtml(entry['正しい読み'])}</td>
+          <td>${escapeHtml(entry['注意メモ'] || '')}</td>
+          <td>
+            ${entry._isCustom ? `<button type="button" class="btn btn-danger dict-delete" data-idx="${entry._customIdx}" style="padding:2px 7px;font-size:0.75rem;">削除</button>` : '-'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  els.openDictModalBtn.addEventListener('click', () => {
+    renderDictTable();
+    els.dictModal.classList.add('open');
+  });
+
+  els.closeDictModalBtn.addEventListener('click', () => {
+    els.dictModal.classList.remove('open');
+  });
+
+  els.dictModal.addEventListener('click', (e) => {
+    if (e.target === els.dictModal) els.dictModal.classList.remove('open');
+  });
+
+  els.addDictForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const surface = els.newSurface.value.trim();
+    const misread = els.newMisread.value.trim();
+    const correct = els.newCorrect.value.trim();
+    const note = els.newNote.value.trim();
+    if (!surface || !misread || !correct) return;
+
+    customDict.unshift({
+      '表記': surface,
+      '想定される誤読': misread,
+      '正しい読み': correct,
+      '注意メモ': note,
+    });
+    disabledSurfaces.delete(surface);
+    saveCustomDict(customDict);
+    saveDisabledSet(disabledSurfaces);
+
+    els.addDictForm.reset();
+    renderDictTable();
+    updateAll();
+    showToast(`「${surface}」をカスタム辞書に追加しました`);
+  });
+
+  els.dictTableBody.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('dict-toggle')) return;
+    const surface = e.target.dataset.surface;
+    if (e.target.checked) {
+      disabledSurfaces.delete(surface);
+    } else {
+      disabledSurfaces.add(surface);
+    }
+    saveDisabledSet(disabledSurfaces);
+    renderDictTable();
+    updateAll();
+  });
+
+  els.dictTableBody.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('dict-delete')) return;
+    const idx = Number(e.target.dataset.idx);
+    const removed = customDict.splice(idx, 1)[0];
+    saveCustomDict(customDict);
+    renderDictTable();
+    updateAll();
+    if (removed) showToast(`「${removed['表記']}」を削除しました`);
+  });
+
+  els.exportDictBtn.addEventListener('click', () => {
+    const payload = {
+      version: '1.0.0',
+      updatedAt: new Date().toISOString().slice(0, 10),
+      entries: customDict,
+    };
+    downloadFile(
+      JSON.stringify(payload, null, 2),
+      'custom_dictionary.json',
+      'application/json;charset=utf-8'
+    );
+  });
+
+  els.importDictBtn.addEventListener('click', () => els.importDictFile.click());
+
+  els.importDictFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const entries = Array.isArray(parsed) ? parsed : parsed.entries;
+      if (!Array.isArray(entries)) throw new Error('entries配列が見つかりません');
+
+      const valid = entries.filter(
+        (item) => item && typeof item['表記'] === 'string' && item['表記'].trim()
+      );
+      // 既存のカスタム辞書に重複しないものを追加
+      const existingSurfaces = new Set(customDict.map((c) => c['表記']));
+      let addedCount = 0;
+      valid.forEach((item) => {
+        if (!existingSurfaces.has(item['表記'])) {
+          customDict.push({
+            '表記': item['表記'].trim(),
+            '想定される誤読': String(item['想定される誤読'] || ''),
+            '正しい読み': String(item['正しい読み'] || ''),
+            '注意メモ': String(item['注意メモ'] || ''),
+          });
+          addedCount++;
+        }
+      });
+
+      saveCustomDict(customDict);
+      renderDictTable();
+      updateAll();
+      showToast(`${addedCount}語をインポートしました`);
+    } catch (err) {
+      alert('JSONの読み込みに失敗しました: ' + err.message);
+    } finally {
+      els.importDictFile.value = '';
+    }
+  });
+
+  // タブ切り替え
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    });
+  });
+
+  els.toggleSettingsBtn.addEventListener('click', () => {
+    els.settingsPanel.classList.toggle('open');
+  });
+
+  async function copyText(text) {
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    showToast('クリップボードにコピーしました');
+  }
+
+  function downloadFile(content, filename, mimeType) {
+    if (!content) return;
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('copyVoicevoxBtn').addEventListener('click', () => copyText(els.voicevoxOutput.textContent));
+  document.getElementById('copySrtBtn').addEventListener('click', () => copyText(els.srtOutput.textContent));
+  document.getElementById('copyYmm4Btn').addEventListener('click', () => copyText(els.ymm4Output.textContent));
+
+  document.getElementById('downloadSrtBtn').addEventListener('click', () => {
+    downloadFile(els.srtOutput.textContent, 'subtitles.srt', 'text/plain;charset=utf-8');
+  });
+
+  document.getElementById('downloadYmm4Btn').addEventListener('click', () => {
+    const csvWithBom = '\uFEFF' + els.ymm4Output.textContent;
+    downloadFile(csvWithBom, 'ymm4_script.csv', 'text/csv;charset=utf-8');
+  });
+
+  [
+    els.scriptInput,
+    els.optSplitSentence,
+    els.optStripPunct,
+    els.optStripSpeaker,
+    els.maxLineLength,
+    els.charsPerSecond,
+    els.defaultSpeaker,
+  ].forEach((el) => el.addEventListener('input', updateAll));
+
+  updateAll();
+</script>
+</body>
+</html>

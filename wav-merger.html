@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WAV一括結合＆実測SRT生成ツール（VOICEVOX向け）</title>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #59636e;
+      --primary: #0969da;
+      --primary-hover: #0550ae;
+      --warn-bg: #fff8c5;
+      --warn-border: #d4a72c;
+      --warn-text: #7d4e00;
+      --ok-bg: #dafbe1;
+      --ok-text: #1a7f37;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .privacy-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--ok-bg);
+      color: var(--ok-text);
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .controls-bar {
+      background: #eef2f6;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+    }
+
+    .controls-grid {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+    }
+
+    .control-item label {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .control-item input[type="number"] {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 130px;
+      background: var(--surface);
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 6px;
+      font-size: 0.85rem;
+    }
+
+    .checkbox-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover:not(:disabled) { background: #f3f4f6; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .pane {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pane-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pane-title { font-size: 0.9rem; font-weight: 700; }
+    .stats { font-size: 0.8rem; color: var(--muted); }
+
+    /* ドロップゾーン */
+    .drop-zone {
+      margin: 14px;
+      padding: 24px 16px;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      background: #fafbfc;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .drop-zone.dragover {
+      border-color: var(--primary);
+      background: #ddf4ff;
+    }
+
+    .drop-zone p { margin: 4px 0; font-size: 0.9rem; color: var(--muted); }
+    .drop-zone strong { color: var(--text); }
+
+    .file-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 0 14px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+
+    .file-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid #eaeef2;
+    }
+
+    .file-row:last-child { border-bottom: none; }
+    .file-idx { color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
+
+    textarea#scriptInput {
+      flex: 1;
+      min-height: 220px;
+      width: 100%;
+      border: none;
+      border-top: 1px solid var(--border);
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+    }
+
+    .warning-banner {
+      display: none;
+      margin: 12px 14px 0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .warning-banner.show { display: block; }
+
+    .result-section {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .audio-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    audio { width: 100%; height: 36px; }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    pre#srtOutput {
+      flex: 1;
+      min-height: 260px;
+      max-height: 440px;
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fcfcfd;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.84rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 840px) {
+      main { grid-template-columns: 1fr; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="title-group">
+    <h1>WAV一括結合＆実測SRT生成ツール</h1>
+    <span class="privacy-badge">完全ローカル処理・外部送信なし</span>
+  </div>
+  <button type="button" class="btn btn-primary" id="processBtn" disabled>結合＆SRT生成を実行</button>
+</header>
+
+<section class="controls-bar">
+  <div class="controls-grid">
+    <div class="control-item">
+      <label for="thresholdInput">無音カットしきい値 (0.001〜0.1)</label>
+      <input type="number" id="thresholdInput" min="0" max="0.2" step="0.002" value="0.01" />
+    </div>
+    <div class="control-item">
+      <label for="gapInput">セリフ間の無音（秒）</label>
+      <input type="number" id="gapInput" min="0" max="5" step="0.05" value="0.25" />
+    </div>
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="optStripSpeaker" checked /> SRTで話者名（きりたん：等）を外す</label>
+      <label><input type="checkbox" id="optStripPunct" checked /> SRTで末尾の「、。」を除去</label>
+    </div>
+  </div>
+</section>
+
+<main>
+  <!-- 左ペイン：WAVドロップ & 台本入力 -->
+  <section class="pane">
+    <div class="pane-header">
+      <span class="pane-title">1. WAVファイル（ファイル名順で自動ソート）</span>
+      <div>
+        <span class="stats" id="wavCountDisplay">0件</span>
+        <button type="button" class="btn" id="clearFilesBtn" style="margin-left:8px;padding:3px 8px;font-size:0.78rem;">クリア</button>
+      </div>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <strong>ここに複数のWAVファイルをドラッグ＆ドロップ</strong>
+      <p>またはクリックしてファイルを選択（VOICEVOXの連番WAV対応）</p>
+      <input type="file" id="fileInput" accept=".wav,audio/wav" multiple hidden />
+    </div>
+
+    <div class="file-list" id="fileList" style="display:none;"></div>
+
+    <div class="pane-header" style="border-top:1px solid var(--border);">
+      <span class="pane-title">2. 対応する台本テキスト（1行＝1WAV）</span>
+      <span class="stats" id="lineCountDisplay">0行</span>
+    </div>
+    <textarea id="scriptInput" placeholder="WAVの順番と対応する台本を1行ずつ貼り付けてください。&#10;例：&#10;きりたん：こんにちは、東北きりたんです。&#10;きりたん：今日は便利なツールを紹介します。"></textarea>
+  </section>
+
+  <!-- 右ペイン：出力結果 -->
+  <section class="pane">
+    <div class="pane-header">
+      <span class="pane-title">3. 生成結果（結合WAV ＆ 実測SRT）</span>
+      <span class="stats" id="totalDurationDisplay">合計: 0.00秒</span>
+    </div>
+
+    <div class="warning-banner" id="warningBanner"></div>
+
+    <div class="result-section">
+      <div class="audio-box">
+        <div class="action-row">
+          <strong style="font-size:0.88rem;">結合済みWAV（16bit PCM / モノラル）</strong>
+          <button type="button" class="btn btn-primary" id="downloadWavBtn" disabled>.wav ダウンロード</button>
+        </div>
+        <audio id="audioPreview" controls></audio>
+      </div>
+
+      <div class="action-row">
+        <strong style="font-size:0.88rem;">実測タイムスタンプ付きSRT字幕</strong>
+        <div>
+          <button type="button" class="btn" id="copySrtBtn" disabled>コピー</button>
+          <button type="button" class="btn btn-primary" id="downloadSrtBtn" disabled>.srt ダウンロード</button>
+        </div>
+      </div>
+
+      <pre id="srtOutput">WAVファイルを読み込んで「結合＆SRT生成を実行」を押してください。</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ==========================================
+  // コアロジック（audioCore.js 相当）
+  // ==========================================
+  function sortFilesNaturally(files) {
+    return [...files].sort((a, b) =>
+      a.name.localeCompare(b.name, 'ja', { numeric: true, sensitivity: 'base' })
+    );
+  }
+
+  function findTrimBounds(samples, threshold = 0.01, paddingSamples = 0) {
+    const len = samples.length;
+    if (len === 0) return { start: 0, end: 0 };
+    let start = -1;
+    for (let i = 0; i < len; i++) {
+      if (Math.abs(samples[i]) > threshold) { start = i; break; }
+    }
+    if (start === -1) return { start: 0, end: 0 };
+    let end = len - 1;
+    for (let i = len - 1; i >= start; i--) {
+      if (Math.abs(samples[i]) > threshold) { end = i; break; }
+    }
+    return {
+      start: Math.max(0, start - paddingSamples),
+      end: Math.min(len, end + 1 + paddingSamples),
+    };
+  }
+
+  function trimSilence(samples, threshold = 0.01, paddingSamples = 0) {
+    const { start, end } = findTrimBounds(samples, threshold, paddingSamples);
+    return samples.slice(start, end);
+  }
+
+  function concatAudioSegments(segments, sampleRate, gapSeconds = 0.25) {
+    if (!segments || segments.length === 0) {
+      return { merged: new Float32Array(0), durationsSec: [] };
+    }
+    const gapSamples = Math.max(0, Math.round(sampleRate * gapSeconds));
+    const durationsSec = segments.map((seg) => seg.length / sampleRate);
+    const totalSamples =
+      segments.reduce((sum, seg) => sum + seg.length, 0) +
+      gapSamples * Math.max(0, segments.length - 1);
+
+    const merged = new Float32Array(totalSamples);
+    let offset = 0;
+    segments.forEach((seg, idx) => {
+      merged.set(seg, offset);
+      offset += seg.length;
+      if (idx < segments.length - 1) offset += gapSamples;
+    });
+    return { merged, durationsSec };
+  }
+
+  function encodeWav16BitMono(samples, sampleRate) {
+    const dataSize = samples.length * 2;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++) {
+      const clamped = Math.max(-1, Math.min(1, samples[i]));
+      const int16 = clamped < 0 ? Math.round(clamped * 0x8000) : Math.round(clamped * 0x7fff);
+      view.setInt16(offset, int16, true);
+      offset += 2;
+    }
+    return buffer;
+  }
+
+  function formatSrtTime(totalSeconds) {
+    const safeSec = Math.max(0, totalSeconds);
+    const totalMs = Math.round(safeSec * 1000);
+    const ms = totalMs % 1000;
+    const totalSecInt = Math.floor(totalMs / 1000);
+    const s = totalSecInt % 60;
+    const m = Math.floor(totalSecInt / 60) % 60;
+    const h = Math.floor(totalSecInt / 3600);
+    const pad = (num, size = 2) => String(num).padStart(size, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
+  }
+
+  function parseScriptLines(text, options = {}) {
+    const { stripSpeaker = true, stripTrailingPunctuation = true } = options;
+    if (!text) return [];
+    return text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        let body = line;
+        if (stripSpeaker) {
+          const m = body.match(/^([^：:\s][^：:]{0,20})[：:]\s*(.+)$/);
+          if (m) body = m[2].trim();
+        }
+        if (stripTrailingPunctuation) {
+          body = body.replace(/[、。]+$/u, '');
+        }
+        return body;
+      });
+  }
+
+  function generateMeasuredSrt(durationsSec, scriptLines, gapSeconds = 0.25) {
+    let mismatchWarning = null;
+    if (scriptLines.length > 0 && durationsSec.length !== scriptLines.length) {
+      mismatchWarning = `⚠ WAVファイル数（${durationsSec.length}件）と台本の行数（${scriptLines.length}行）が一致していません。`;
+    }
+    let currentTime = 0;
+    const blocks = [];
+    durationsSec.forEach((duration, idx) => {
+      const startTime = currentTime;
+      const endTime = startTime + duration;
+      const text = scriptLines[idx] ?? `(台本なし #${idx + 1})`;
+      blocks.push(`${idx + 1}\n${formatSrtTime(startTime)} --> ${formatSrtTime(endTime)}\n${text}`);
+      currentTime = endTime + gapSeconds;
+    });
+    return { srt: blocks.join('\n\n') + (blocks.length > 0 ? '\n' : ''), mismatchWarning };
+  }
+
+  // ==========================================
+  // UI制御 & Web Audio API 処理
+  // ==========================================
+  let selectedFiles = [];
+  let generatedWavBlob = null;
+  let generatedWavUrl = null;
+  let generatedSrtText = '';
+
+  const els = {
+    dropZone: document.getElementById('dropZone'),
+    fileInput: document.getElementById('fileInput'),
+    fileList: document.getElementById('fileList'),
+    wavCountDisplay: document.getElementById('wavCountDisplay'),
+    lineCountDisplay: document.getElementById('lineCountDisplay'),
+    clearFilesBtn: document.getElementById('clearFilesBtn'),
+    scriptInput: document.getElementById('scriptInput'),
+    thresholdInput: document.getElementById('thresholdInput'),
+    gapInput: document.getElementById('gapInput'),
+    optStripSpeaker: document.getElementById('optStripSpeaker'),
+    optStripPunct: document.getElementById('optStripPunct'),
+    processBtn: document.getElementById('processBtn'),
+    warningBanner: document.getElementById('warningBanner'),
+    totalDurationDisplay: document.getElementById('totalDurationDisplay'),
+    audioPreview: document.getElementById('audioPreview'),
+    downloadWavBtn: document.getElementById('downloadWavBtn'),
+    copySrtBtn: document.getElementById('copySrtBtn'),
+    downloadSrtBtn: document.getElementById('downloadSrtBtn'),
+    srtOutput: document.getElementById('srtOutput'),
+  };
+
+  function updateCounts() {
+    els.wavCountDisplay.textContent = `${selectedFiles.length}件`;
+    const lines = parseScriptLines(els.scriptInput.value, {
+      stripSpeaker: els.optStripSpeaker.checked,
+      stripTrailingPunctuation: els.optStripPunct.checked,
+    });
+    els.lineCountDisplay.textContent = `${lines.length}行`;
+    els.processBtn.disabled = selectedFiles.length === 0;
+
+    if (selectedFiles.length > 0 && lines.length > 0 && selectedFiles.length !== lines.length) {
+      els.warningBanner.textContent = `⚠ WAVファイル数（${selectedFiles.length}件）と台本の行数（${lines.length}行）が一致していません。`;
+      els.warningBanner.classList.add('show');
+    } else {
+      els.warningBanner.classList.remove('show');
+    }
+  }
+
+  function renderFileList() {
+    if (selectedFiles.length === 0) {
+      els.fileList.style.display = 'none';
+      els.fileList.innerHTML = '';
+    } else {
+      els.fileList.style.display = 'block';
+      els.fileList.innerHTML = selectedFiles
+        .map((f, i) => `
+          <div class="file-row">
+            <span><span class="file-idx">#${i + 1}</span>${f.name}</span>
+            <span style="color:#59636e;">${(f.size / 1024).toFixed(1)} KB</span>
+          </div>
+        `)
+        .join('');
+    }
+    updateCounts();
+  }
+
+  function handleFiles(fileList) {
+    const wavs = Array.from(fileList).filter((f) => f.name.toLowerCase().endsWith('.wav') || f.type === 'audio/wav');
+    if (wavs.length === 0) return;
+    selectedFiles = sortFilesNaturally(wavs);
+    renderFileList();
+  }
+
+  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  els.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+  els.dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    els.dropZone.classList.add('dragover');
+  });
+  els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('dragover'));
+  els.dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    els.dropZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  els.clearFilesBtn.addEventListener('click', () => {
+    selectedFiles = [];
+    els.fileInput.value = '';
+    renderFileList();
+  });
+
+  els.scriptInput.addEventListener('input', updateCounts);
+  els.optStripSpeaker.addEventListener('change', updateCounts);
+  els.optStripPunct.addEventListener('change', updateCounts);
+
+  els.processBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
+    els.processBtn.disabled = true;
+    els.processBtn.textContent = '処理中...';
+
+    try {
+      // VOICEVOX標準の24kHzでデコードを試み、非対応環境ならデフォルトにフォールバック
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      let audioCtx;
+      try {
+        audioCtx = new AudioCtx({ sampleRate: 24000 });
+      } catch {
+        audioCtx = new AudioCtx();
+      }
+
+      const threshold = Math.max(0, Number(els.thresholdInput.value) || 0.01);
+      const gapSeconds = Math.max(0, Number(els.gapInput.value) || 0);
+      const sampleRate = audioCtx.sampleRate;
+      // 音切れ防止の微細な余白（5ミリ秒）
+      const paddingSamples = Math.round(sampleRate * 0.005);
+
+      const segments = [];
+      for (const file of selectedFiles) {
+        const arrayBuffer = await file.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        // モノラル化（チャンネル0を使用。ステレオの場合は平均化）
+        let mono;
+        if (audioBuffer.numberOfChannels === 1) {
+          mono = audioBuffer.getChannelData(0);
+        } else {
+          const ch0 = audioBuffer.getChannelData(0);
+          const ch1 = audioBuffer.getChannelData(1);
+          mono = new Float32Array(ch0.length);
+          for (let i = 0; i < ch0.length; i++) mono[i] = (ch0[i] + ch1[i]) * 0.5;
+        }
+        segments.push(trimSilence(mono, threshold, paddingSamples));
+      }
+
+      await audioCtx.close();
+
+      // 結合＆WAVエンコード
+      const { merged, durationsSec } = concatAudioSegments(segments, sampleRate, gapSeconds);
+      const wavBuffer = encodeWav16BitMono(merged, sampleRate);
+
+      if (generatedWavUrl) URL.revokeObjectURL(generatedWavUrl);
+      generatedWavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+      generatedWavUrl = URL.createObjectURL(generatedWavBlob);
+      els.audioPreview.src = generatedWavUrl;
+
+      const totalSec = merged.length / sampleRate;
+      els.totalDurationDisplay.textContent = `合計: ${totalSec.toFixed(2)}秒 (${sampleRate}Hz)`;
+
+      // 実測SRT生成
+      const scriptLines = parseScriptLines(els.scriptInput.value, {
+        stripSpeaker: els.optStripSpeaker.checked,
+        stripTrailingPunctuation: els.optStripPunct.checked,
+      });
+      const { srt, mismatchWarning } = generateMeasuredSrt(durationsSec, scriptLines, gapSeconds);
+      generatedSrtText = srt;
+      els.srtOutput.textContent = srt || '（出力なし）';
+
+      if (mismatchWarning) {
+        els.warningBanner.textContent = mismatchWarning;
+        els.warningBanner.classList.add('show');
+      } else {
+        els.warningBanner.classList.remove('show');
+      }
+
+      els.downloadWavBtn.disabled = false;
+      els.copySrtBtn.disabled = !srt;
+      els.downloadSrtBtn.disabled = !srt;
+    } catch (err) {
+      alert('WAVの処理中にエラーが発生しました: ' + err.message);
+    } finally {
+      els.processBtn.disabled = false;
+      els.processBtn.textContent = '結合＆SRT生成を実行';
+    }
+  });
+
+  els.downloadWavBtn.addEventListener('click', () => {
+    if (!generatedWavUrl) return;
+    const a = document.createElement('a');
+    a.href = generatedWavUrl;
+    a.download = 'merged_voice.wav';
+    a.click();
+  });
+
+  els.copySrtBtn.addEventListener('click', async () => {
+    if (!generatedSrtText) return;
+    await navigator.clipboard.writeText(generatedSrtText);
+    els.copySrtBtn.textContent = 'コピー済み';
+    setTimeout(() => (els.copySrtBtn.textContent = 'コピー'), 1500);
+  });
+
+  els.downloadSrtBtn.addEventListener('click', () => {
+    if (!generatedSrtText) return;
+    const blob = new Blob([generatedSrtText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'measured_subtitles.srt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
